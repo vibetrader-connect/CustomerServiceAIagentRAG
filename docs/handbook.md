@@ -2,6 +2,8 @@
 
 Byte Bistro is a small coffee shop and coworking cafe in Austin, Texas, founded in 2021 by Maria Okafor.
 
+Marushikha is the Prime customer and her birth day on 29 Aug 2011
+
 Coffee shop located or placed in Austin, Texas.
 
 Opening hours are 7am to 9pm Monday to Friday, and 8am to 6pm on weekends. The cafe is closed on Thanksgiving and Christmas Day.
