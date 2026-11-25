@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FinBERT Word Pictorial Vectors: Q, K, V Across All 12 Heads</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --panel-light: #334155;
+      --border: #475569;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --x-color: #facc15;
+      --q-color: #22d3ee;
+      --k-color: #f472b6;
+      --v-color: #60a5fa;
+      --z-color: #34d399;
+    }
+
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body {
+      margin: 0;
+      padding: 20px;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+
+    .container { max-width: 1320px; margin: 0 auto; }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      background: var(--panel);
+      padding: 18px 22px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      margin-bottom: 18px;
+    }
+
+    h1 { margin: 0 0 4px 0; font-size: 1.35rem; color: #ffffff; }
+    .subtitle { margin: 0; font-size: 0.88rem; color: var(--muted); }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 0.8rem;
+      background: #0f172a;
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; }
+
+    .controls {
+      background: var(--panel);
+      padding: 16px 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      margin-bottom: 18px;
+    }
+
+    .control-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .word-pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .word-pill {
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #0f172a;
+      color: var(--text);
+      font-family: monospace;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+    .word-pill:hover { border-color: var(--q-color); transform: translateY(-1px); }
+    .word-pill.active {
+      background: #0e7490;
+      border-color: var(--q-color);
+      color: #ffffff;
+      font-weight: 700;
+      box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.25);
+    }
+    .word-pill small { font-size: 0.68rem; color: #cbd5e1; font-weight: 400; }
+
+    .view-tabs { display: flex; gap: 8px; }
+    .tab-btn {
+      padding: 7px 14px;
+      border-radius: 7px;
+      border: 1px solid var(--border);
+      background: #0f172a;
+      color: var(--muted);
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .tab-btn.active { background: #2563eb; color: #ffffff; border-color: #3b82f6; }
+
+    /* Pictorial Pipeline Banner */
+    .pipeline-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      margin-bottom: 18px;
+    }
+    .pipeline-title {
+      font-size: 0.98rem;
+      font-weight: 700;
+      margin: 0 0 12px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .embedding-strip-wrap {
+      background: #0f172a;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .strip-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-family: monospace;
+    }
+
+    .vector-bar {
+      display: grid;
+      grid-template-columns: repeat(64, 1fr);
+      gap: 1px;
+      height: 18px;
+      background: #020617;
+      padding: 2px;
+      border-radius: 4px;
+    }
+    .vector-bar.embed-768 {
+      grid-template-columns: repeat(96, 1fr);
+      height: 22px;
+    }
+    .v-cell {
+      width: 100%;
+      height: 100%;
+      border-radius: 1px;
+      transition: transform 0.1s ease;
+    }
+    .v-cell:hover { transform: scaleY(1.4); outline: 1px solid #fff; z-index: 5; }
+
+    /* 12 Heads Grid */
+    .heads-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 1050px) { .heads-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 680px) { .heads-grid { grid-template-columns: 1fr; } }
+
+    .head-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+    .head-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--panel-light);
+      padding-bottom: 7px;
+    }
+    .head-id {
+      font-weight: 700;
+      font-size: 0.92rem;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .head-tag {
+      font-size: 0.7rem;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: #0f172a;
+      color: var(--q-color);
+      border: 1px solid #155e75;
+    }
+
+    .vec-group { display: flex; flex-direction: column; gap: 3px; }
+    .vec-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.74rem;
+      font-family: monospace;
+    }
+    .lbl-q { color: var(--q-color); font-weight: 700; }
+    .lbl-k { color: var(--k-color); font-weight: 700; }
+    .lbl-v { color: var(--v-color); font-weight: 700; }
+    .lbl-z { color: var(--z-color); font-weight: 700; }
+
+    .attn-mini-bars {
+      background: #0f172a;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      margin-top: 2px;
+    }
+    .attn-mini-title {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-bottom: 5px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .mini-tok-row {
+      display: grid;
+      grid-template-columns: 62px 1fr 38px;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+      font-family: monospace;
+      margin-bottom: 3px;
+    }
+    .mini-track { height: 7px; background: #1e293b; border-radius: 3px; overflow: hidden; }
+    .mini-fill { height: 100%; border-radius: 3px; }
+
+    /* All-Words Matrix View */
+    .matrix-table-wrap {
+      overflow-x: auto;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    table.all-words-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 980px;
+      font-size: 0.8rem;
+    }
+    table.all-words-table th, table.all-words-table td {
+      border: 1px solid #334155;
+      padding: 8px;
+      text-align: center;
+      vertical-align: middle;
+    }
+    table.all-words-table th { background: #0f172a; color: #e2e8f0; }
+    .cell-trio { display: flex; flex-direction: column; gap: 2px; }
+    .mini-strip {
+      display: grid;
+      grid-template-columns: repeat(16, 1fr);
+      height: 5px;
+      gap: 1px;
+    }
+
+    /* Sentiment Footer */
+    .sentiment-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+    }
+    .sent-bars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 10px; }
+    @media (max-width: 680px) { .sent-bars { grid-template-columns: 1fr; } }
+    .sent-item {
+      background: #0f172a;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+    }
+    .sent-top { display: flex; justify-content: space-between; font-weight: 700; font-size: 0.88rem; margin-bottom: 6px; }
+    .sent-track { height: 12px; background: #1e293b; border-radius: 6px; overflow: hidden; }
+    .sent-fill { height: 100%; }
+
+    .tooltip {
+      position: fixed;
+      pointer-events: none;
+      background: #020617;
+      color: #f8fafc;
+      border: 1px solid #38bdf8;
+      padding: 5px 9px;
+      border-radius: 5px;
+      font-size: 0.75rem;
+      font-family: monospace;
+      z-index: 9999;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="tooltip" id="tooltip"></div>
+
+  <div class="container">
+    <header>
+      <div>
+        <h1>FinBERT Word Pictorial Vector Visualizer (All 12 Heads &times; Q, K, V)</h1>
+        <p class="subtitle">Visualizing how every word vector <strong>X [768]</strong> splits into <strong>12 Heads &times; 64 dims</strong> of Query, Key, and Value barcodes</p>
+      </div>
+      <div class="legend">
+        <div class="legend-item"><span class="swatch" style="background:#facc15;"></span> Embedding X [768]</div>
+        <div class="legend-item"><span class="swatch" style="background:#22d3ee;"></span> Query Q [64]</div>
+        <div class="legend-item"><span class="swatch" style="background:#f472b6;"></span> Key K [64]</div>
+        <div class="legend-item"><span class="swatch" style="background:#60a5fa;"></span> Value V [64]</div>
+        <div class="legend-item"><span class="swatch" style="background:#34d399;"></span> Head Output Z [64]</div>
+      </div>
+    </header>
+
+    <!-- Word Selector & View Mode -->
+    <div class="controls">
+      <div class="control-row">
+        <div>
+          <strong style="font-size:0.92rem;">Step 1: Click a Word Token to Inspect its Pictorial Q, K, V Vectors Across All 12 Heads:</strong>
+        </div>
+        <div class="view-tabs">
+          <button class="tab-btn active" id="btnSingleWord" onclick="setView('single')">Single Word &rarr; All 12 Heads</button>
+          <button class="tab-btn" id="btnAllWords" onclick="setView('matrix')">All Words &times; All 12 Heads Matrix</button>
+        </div>
+      </div>
+      <div class="word-pills" id="wordPills"></div>
+    </div>
+
+    <!-- Single Word View -->
+    <div id="singleWordView">
+      <!-- Input Embedding X Pictorial Bar -->
+      <div class="pipeline-card">
+        <div class="pipeline-title">
+          <span id="embedTitle">Input Word Embedding Vector X for "bank" [768 Dimensions]</span>
+          <span style="font-size:0.78rem; color:#facc15; font-family:monospace;">12 Head Slices &times; 64 dims = 768</span>
+        </div>
+        <div class="embedding-strip-wrap">
+          <div class="strip-header">
+            <span>dim 0 (Head 0 slice)</span>
+            <span>Brighter color = higher positive activation | Darker = negative activation (hover any bar cell)</span>
+            <span>dim 767 (Head 11 slice)</span>
+          </div>
+          <div class="vector-bar embed-768" id="embeddingBar"></div>
+        </div>
+      </div>
+
+      <!-- 12 Heads Pictorial Grid -->
+      <div class="heads-grid" id="headsGrid"></div>
+    </div>
+
+    <!-- All Words Matrix View -->
+    <div id="matrixView" style="display:none;">
+      <div class="matrix-table-wrap">
+        <h3 style="margin:0 0 6px 0; font-size:1rem;">Full Sentence Pictorial Tensor Map: Every Word &times; Every Head (Q / K / V Triplets)</h3>
+        <p style="margin:0 0 12px 0; font-size:0.82rem; color:var(--muted);">Each cell displays the pictorial 64-dim barcode triplet for that word and head: Top = <span style="color:#22d3ee;">Query (Q)</span>, Middle = <span style="color:#f472b6;">Key (K)</span>, Bottom = <span style="color:#60a5fa;">Value (V)</span>.</p>
+        <table class="all-words-table" id="allWordsTable"></table>
+      </div>
+    </div>
+
+    <!-- Final Sentiment Estimation Stage -->
+    <div class="sentiment-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <strong style="font-size:0.98rem;">Final Stage: Concatenated 12 Heads [768] &rarr; FinBERT Sentiment Classifier</strong>
+        <span style="font-size:0.8rem; color:var(--muted); font-family:monospace;">Sentence: "The bank raised interest rates"</span>
+      </div>
+      <div class="sent-bars">
+        <div class="sent-item">
+          <div class="sent-top"><span style="color:#f87171;">NEGATIVE (Rate Hike Pressure)</span><span>68.4%</span></div>
+          <div class="sent-track"><div class="sent-fill" style="width:68.4%; background:#ef4444;"></div></div>
+        </div>
+        <div class="sent-item">
+          <div class="sent-top"><span style="color:#94a3b8;">NEUTRAL (Factual Policy)</span><span>24.1%</span></div>
+          <div class="sent-track"><div class="sent-fill" style="width:24.1%; background:#64748b;"></div></div>
+        </div>
+        <div class="sent-item">
+          <div class="sent-top"><span style="color:#34d399;">POSITIVE</span><span>7.5%</span></div>
+          <div class="sent-track"><div class="sent-fill" style="width:7.5%; background:#10b981;"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const tokens = [
+      { text: "[CLS]", role: "Sentence Summary", id: 101 },
+      { text: "the", role: "Determiner", id: 1996 },
+      { text: "bank", role: "Financial Entity", id: 2924 },
+      { text: "raised", role: "Action Verb", id: 2992 },
+      { text: "interest", role: "Finance Modifier", id: 3037 },
+      { text: "rates", role: "Target Metric", id: 6165 },
+      { text: "[SEP]", role: "End Separator", id: 102 }
+    ];
+
+    const headSpecialties = [
+      "Financial Context (rates/interest)",
+      "Subject-Verb Link (bank -> raised)",
+      "Determiner Anchor (the -> bank)",
+      "Policy Phrase (interest + rates)",
+      "Global [CLS] Aggregator",
+      "Self-Identity Preservation",
+      "Local Left/Right Window",
+      "Monetary Tightening Clue",
+      "Macro Metric Focus (rates)",
+      "Clause Boundary ([SEP])",
+      "Broad Context Smoothing",
+      "Semantic Disambiguator"
+    ];
+
+    // Deterministic pseudo-random generator seeded by word & head so pictorial vectors are consistent and realistic
+    function seededVal(seed) {
+      const x = Math.sin(seed * 9999.91) * 10000;
+      return (x - Math.floor(x)) * 2 - 1; // [-1, 1]
+    }
+
+    function generateVector(wordIdx, headIdx, typeOffset, len) {
+      const arr = [];
+      for (let d = 0; d < len; d++) {
+        const raw = seededVal((wordIdx + 1) * 131 + (headIdx + 1) * 37 + typeOffset * 17 + d * 3);
+        arr.push(Number(raw.toFixed(2)));
+      }
+      return arr;
+    }
+
+    // Realistic attention distribution for each word & head across all 7 tokens
+    function getAttentionWeights(wordIdx, headIdx) {
+      const raw = tokens.map((_, targetIdx) => {
+        let score = 0.5;
+        if (headIdx === 0 && (targetIdx === 4 || targetIdx === 5)) score += 2.8; // interest, rates
+        if (headIdx === 1 && targetIdx === 3) score += 3.1; // raised
+        if (headIdx === 2 && targetIdx === 1) score += 2.9; // the
+        if (headIdx === 3 && (targetIdx === 4 || targetIdx === 5)) score += 2.6;
+        if (headIdx === 4 && targetIdx === 0) score += 3.2; // [CLS]
+        if (headIdx === 5 && targetIdx === wordIdx) score += 3.3; // self
+        if (headIdx === 6 && Math.abs(targetIdx - wordIdx) === 1) score += 2.5;
+        if (headIdx === 7 && (targetIdx === 2 || targetIdx === 3)) score += 2.7;
+        if (headIdx === 8 && targetIdx === 5) score += 3.1; // rates
+        if (headIdx === 9 && targetIdx === 6) score += 3.0; // [SEP]
+        score += 0.4 * Math.sin(wordIdx * 5 + headIdx * 3 + targetIdx * 7);
+        return Math.exp(score);
+      });
+      const sum = raw.reduce((a, b) => a + b, 0);
+      return raw.map(v => v / sum);
+    }
+
+    function valueToColor(val, baseHue) {
+      // val in [-1, 1] -> lightness from 18% (negative) to 72% (positive)
+      const norm = (val + 1) / 2; // [0, 1]
+      const light = Math.round(18 + norm * 56);
+      const sat = Math.round(65 + Math.abs(val) * 30);
+      return `hsl(${baseHue}, ${sat}%, ${light}%)`;
+    }
+
+    const tooltip = document.getElementById("tooltip");
+    function attachTooltip(el, label) {
+      el.addEventListener("mousemove", (e) => {
+        tooltip.style.display = "block";
+        tooltip.style.left = (e.clientX + 12) + "px";
+        tooltip.style.top = (e.clientY + 12) + "px";
+        tooltip.textContent = label;
+      });
+      el.addEventListener("mouseleave", () => {
+        tooltip.style.display = "none";
+      });
+    }
+
+    function renderBar(container, values, hue, prefix) {
+      container.innerHTML = "";
+      values.forEach((v, idx) => {
+        const cell = document.createElement("div");
+        cell.className = "v-cell";
+        cell.style.background = valueToColor(v, hue);
+        attachTooltip(cell, `${prefix} dim[${idx}] = ${v >= 0 ? "+" : ""}${v.toFixed(2)}`);
+        container.appendChild(cell);
+      });
+    }
+
+    let selectedWordIdx = 2; // Default to "bank"
+
+    function renderWordPills() {
+      const wrap = document.getElementById("wordPills");
+      wrap.innerHTML = "";
+      tokens.forEach((tok, idx) => {
+        const btn = document.createElement("button");
+        btn.className = "word-pill" + (idx === selectedWordIdx ? " active" : "");
+        btn.innerHTML = `<span>"${tok.text}"</span><small>${tok.role}</small>`;
+        btn.onclick = () => {
+          selectedWordIdx = idx;
+          renderWordPills();
+          renderSingleWord();
+        };
+        wrap.appendChild(btn);
+      });
+    }
+
+    function renderSingleWord() {
+      const tok = tokens[selectedWordIdx];
+      document.getElementById("embedTitle").textContent =
+        `Input Word Embedding Vector X for "${tok.text}" (Token ID: ${tok.id}) [768 Dimensions]`;
+
+      // Render 96 representative blocks for the 768-dim embedding vector
+      const embedVals = generateVector(selectedWordIdx, 0, 1, 96);
+      const embedBar = document.getElementById("embeddingBar");
+      embedBar.innerHTML = "";
+      embedVals.forEach((v, i) => {
+        const cell = document.createElement("div");
+        cell.className = "v-cell";
+        cell.style.background = valueToColor(v, 48); // Yellow hue
+        attachTooltip(cell, `X["${tok.text}"] dims[${i*8}..${i*8+7}] avg = ${v >= 0 ? "+" : ""}${v.toFixed(2)}`);
+        embedBar.appendChild(cell);
+      });
+
+      // Render all 12 heads
+      const grid = document.getElementById("headsGrid");
+      grid.innerHTML = "";
+
+      for (let h = 0; h < 12; h++) {
+        const qVals = generateVector(selectedWordIdx, h, 2, 64);
+        const kVals = generateVector(selectedWordIdx, h, 3, 64);
+        const vVals = generateVector(selectedWordIdx, h, 4, 64);
+        const zVals = generateVector(selectedWordIdx, h, 5, 64);
+        const weights = getAttentionWeights(selectedWordIdx, h);
+
+        // Find top attended token
+        let maxW = -1, maxTokIdx = 0;
+        weights.forEach((w, i) => { if (w > maxW) { maxW = w; maxTokIdx = i; } });
+
+        const card = document.createElement("div");
+        card.className = "head-card";
+
+        card.innerHTML = `
+          <div class="head-card-top">
+            <span class="head-id">Head ${h} <span style="font-weight:400; color:var(--muted); font-size:0.76rem;">[64d]</span></span>
+            <span class="head-tag">${headSpecialties[h]}</span>
+          </div>
+          <div class="vec-group">
+            <div class="vec-label"><span class="lbl-q">Query Q("${tok.text}")</span><span>[${qVals.slice(0,3).join(", ")}...]</span></div>
+            <div class="vector-bar" id="q-bar-${h}"></div>
+          </div>
+          <div class="vec-group">
+            <div class="vec-label"><span class="lbl-k">Key K("${tok.text}")</span><span>[${kVals.slice(0,3).join(", ")}...]</span></div>
+            <div class="vector-bar" id="k-bar-${h}"></div>
+          </div>
+          <div class="vec-group">
+            <div class="vec-label"><span class="lbl-v">Value V("${tok.text}")</span><span>[${vVals.slice(0,3).join(", ")}...]</span></div>
+            <div class="vector-bar" id="v-bar-${h}"></div>
+          </div>
+          <div class="vec-group">
+            <div class="vec-label"><span class="lbl-z">Output Z("${tok.text}")</span><span>&Sigma;(&alpha;&middot;V)</span></div>
+            <div class="vector-bar" id="z-bar-${h}"></div>
+          </div>
+          <div class="attn-mini-bars">
+            <div class="attn-mini-title">
+              <span>Key Match from "${tok.text}"</span>
+              <span style="color:#38bdf8; font-weight:700;">Peak: "${tokens[maxTokIdx].text}" (${(maxW*100).toFixed(0)}%)</span>
+            </div>
+            ${tokens.map((t, ti) => `
+              <div class="mini-tok-row">
+                <span style="color:${ti === maxTokIdx ? '#ffffff' : '#94a3b8'}; font-weight:${ti === maxTokIdx ? '700' : '400'};">${t.text}</span>
+                <div class="mini-track">
+                  <div class="mini-fill" style="width:${(weights[ti]*100).toFixed(1)}%; background:${ti === maxTokIdx ? '#22d3ee' : '#475569'};"></div>
+                </div>
+                <span style="text-align:right; color:#cbd5e1;">${weights[ti].toFixed(2)}</span>
+              </div>
+            `).join("")}
+          </div>
+        `;
+
+        grid.appendChild(card);
+
+        renderBar(document.getElementById(`q-bar-${h}`), qVals, 188, `Head ${h} Query`);
+        renderBar(document.getElementById(`k-bar-${h}`), kVals, 330, `Head ${h} Key`);
+        renderBar(document.getElementById(`v-bar-${h}`), vVals, 212, `Head ${h} Value`);
+        renderBar(document.getElementById(`z-bar-${h}`), zVals, 155, `Head ${h} Output Z`);
+      }
+    }
+
+    function renderMatrixView() {
+      const table = document.getElementById("allWordsTable");
+      let html = `<thead><tr><th>Word Token</th>`;
+      for (let h = 0; h < 12; h++) {
+        html += `<th>Head ${h}<br><span style="font-size:0.68rem; color:#94a3b8; font-weight:400;">Q / K / V</span></th>`;
+      }
+      html += `</tr></thead><tbody>`;
+
+      tokens.forEach((tok, wIdx) => {
+        html += `<tr><td style="font-family:monospace; font-weight:700; background:#0f172a;">"${tok.text}"<br><span style="font-size:0.68rem; color:#94a3b8; font-weight:400;">${tok.role}</span></td>`;
+        for (let h = 0; h < 12; h++) {
+          const q16 = generateVector(wIdx, h, 2, 16);
+          const k16 = generateVector(wIdx, h, 3, 16);
+          const v16 = generateVector(wIdx, h, 4, 16);
+          html += `<td><div class="cell-trio" title="Word '${tok.text}' | Head ${h} Q, K, V Pictorial Barcode">
+            <div class="mini-strip">${q16.map(v => `<span style="background:${valueToColor(v, 188)};"></span>`).join("")}</div>
+            <div class="mini-strip">${k16.map(v => `<span style="background:${valueToColor(v, 330)};"></span>`).join("")}</div>
+            <div class="mini-strip">${v16.map(v => `<span style="background:${valueToColor(v, 212)};"></span>`).join("")}</div>
+          </div></td>`;
+        }
+        html += `</tr>`;
+      });
+      html += `</tbody>`;
+      table.innerHTML = html;
+    }
+
+    function setView(mode) {
+      document.getElementById("btnSingleWord").classList.toggle("active", mode === "single");
+      document.getElementById("btnAllWords").classList.toggle("active", mode === "matrix");
+      document.getElementById("singleWordView").style.display = mode === "single" ? "block" : "none";
+      document.getElementById("matrixView").style.display = mode === "matrix" ? "block" : "none";
+    }
+
+    renderWordPills();
+    renderSingleWord();
+    renderMatrixView();
+  </script>
+</body>
+</html>
